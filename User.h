@@ -33,22 +33,24 @@ public:
 
 		 void think();
 
-		 /** Finds distance to nearest wall in some heading. -1 if no wall */
-		 double nearest_wall(const Eigen::Vector3d& heading) const;
 		 /** Finds distance to nearest wall based on a rotation around head tilt.
 			* For instance, nearest_wall(pi/2) would find the nearest wall on the
-			* user's left side (input is in radians).
+			* user's left side (input is in radians). -1 if no wall found.
 			*/
 		 // Currently uses UP for head tilt
 		 double nearest_wall(double yaw) const;
+
+		 /** Finds distance to nearest wall based on a vector direction expressed
+				 in local coordinates. -1 if no wall found.
+		 */
+		 double nearest_wall(const Eigen::Vector3d& dir) const;
+
+		 const Eigen::Vector3d& get_u() { return u; }
+		 const Eigen::Vector3d& get_v() { return v; }
+		 const Eigen::Vector3d& get_w() { return w; }
 protected:
-		 Eigen::Vector3d heading;
+		 Eigen::Vector3d u, v, w;
 		 Eigen::Vector4d position;
 };
-
-inline double User::nearest_wall(const Eigen::Vector3d& heading) const
-{
-		 return World::get_instance().dist_to_wall(position, heading);
-}
 
 #endif /* defined(__Platform__User__) */

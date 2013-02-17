@@ -17,11 +17,10 @@
 using namespace Eigen;
 using boost::math::constants::pi;
 
-const Vector3d User::UP(0, 1, 0);
 const double User::TURN_SPEED = pi<double>()/8.0; // rads/10ms
 const double User::WALK_SPEED = 0.05; // meters/10ms
 
-User::User(sc_module_name nm) : sc_module(nm), heading(1, 0, 0)
+User::User(sc_module_name nm) : sc_module(nm), u(1, 0, 0), v(0, 1, 0), w(0, 0, 1)
 {
 		 SC_THREAD(think);
 }
@@ -38,12 +37,13 @@ void User::think()
 							 double turnspeed = sign(snd_yaw) * TURN_SPEED;
 							 double dyaw = (abs(snd_yaw) > TURN_SPEED) ? turnspeed : snd_yaw;
 							 // Rotate while maintaining pitch
-							 AngleAxis<double> rotation(-dyaw, UP);
-							 heading = rotation * heading;
-							 cur_yaw.write(std::atan2(heading.z(), heading.x()));
+							 AngleAxis<double> rotation(-dyaw, v);
+							 w = rotation * w;
+							 cur_yaw.write(std::atan2(w.z(), w.x()));
+							 u = v.cross(w);
 					}
 					if (walk.read()) {
-							 position += (heading * WALK_SPEED).homogeneous();
+							 position += (w * WALK_SPEED).homogeneous();
 							 // TODO: Collision detection here
 					}
 		 }
@@ -51,7 +51,19 @@ void User::think()
 
 double User::nearest_wall(double yaw) const
 {
-		 AngleAxis<double> rotation(yaw, UP);
-		 Vector3d rayheading = rotation * this->heading;
+		 AngleAxis<double> rotation(yaw, v);
+		 Vector3d rayheading = rotation * this->w;
 		 return World::get_instance().dist_to_wall(position, rayheading);
+}
+
+double User::nearest_wall(const Vector3d& dir) const
+{
+		 // Rotate local coordinates onto global coordinates
+		 Matrix<double, 3, 3> rot;
+		 rot <<
+					u.x(), u.y(), u.z(),
+					v.x(), v.y(), v.z(),
+					w.x(), w.y(), w.z();
+		 Vector3d ray_dir = rot * dir;
+		 return World::get_instance().dist_to_wall(position, ray_dir);
 }
